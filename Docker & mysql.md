@@ -17,7 +17,9 @@ Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:3
 
 `docker run -d -p 9876:3306 -e MYSQL_ROOT_PASSWORD=<password> mysql` 에서 password는 원하는 것을 입력하면 윈도우 Docker에서 mysql을 실행할 수 있다. 포트때매 고생 좀 함..ㅠ
 
-`docker exec -it container id /bin/bash` 를 입력하면 mysql컨테이너로 들어감
+`docker exec -i -t 5fc7f480ff26 /bin/bash` 를 입력하면 mysql컨테이너로 들어감
+
+위에꺼 입력전에 컨테이너 실행해야함
 
  container id는 `docker ps` 를 입력해서 볼 수 있음!
 
@@ -49,7 +51,7 @@ fail
 
 다른 방법으로 들어가는 방법
 
-`docker inspect <container id>`  : docker container의 세부정보를 볼 수 있음
+`docker inspect 5fc7f480ff26`  : docker container의 세부정보를 볼 수 있음
 
 `mysql -u root -p --host 172.17.0.2 --port 3306` : 위 세부정보에서 IPAddress를 보고 들어가는 것 > 현재 이건 ip가 막혀있어서(?) 안들어가짐..ㅠ
 
