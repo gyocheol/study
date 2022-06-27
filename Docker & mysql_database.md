@@ -145,6 +145,164 @@ ORDER BY 1;
 
 
 
+#### 그룹별 구매 지표 구하기
+
+1. 3가지 테이블 결합
+
+```mysql
+SELECT *
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orderdetails B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.customers C
+ON A.customernumber = C.customernumber;
+```
+
+2. 국가별, 도시별 매출액(나라가 뒤죽박죽)
+
+```mysql
+SELECT C.country, C.city,
+SUM(priceeach*quantityordered) SALES
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orderdetails B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.customers C
+ON A.customernumber = C.customernumber
+GROUP BY 1,2;
+```
+
+3. 가독성있게 정렬(나라 명별로 정렬)
+
+```mysql
+SELECT C.country, C.city,
+SUM(priceeach*quantityordered) SALES
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orderdetails B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.customers C
+ON A.customernumber = C.customernumber
+GROUP BY 1,2
+ORDER BY 1,2;
+```
+
+4. CASE WHEN 구문(이름을 지정가능)
+
+```mysql
+SELECT CASE WHEN country IN ('USA', 'Canada') THEN 'North America' ELSE 'Others' END COUNTRY_GRP
+FROM classicmodels.customers;
+```
+
+5. 북미와 비북미 매출액 비교
+
+```mysql
+SELECT  CASE WHEN country IN ('USA', 'Canada') THEN 'North America' ELSE 'Others' END COUNTRY_GRP, 
+SUM(priceeach*quantityordered) SALES
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orderdetails B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.customers C
+ON A.customernumber = C.customernumber
+GROUP BY 1
+ORDER BY 2 DESC;
+```
+
+디폴트(ASC) : 오름차순
+
+DESC : 내림차순
+
+
+
+6. Rank
+
+```mysql
+SELECT name, goals,
+RANK() OVER(ORDER BY goals DESC) AS 'RANK',
+DENSE_RANK() OVER(ORDER BY goals DESC) AS 'Dense Rank',
+ROW_NUMBER() OVER(ORDER BY goals DESC) AS 'Row Number'
+FROM football.players;
+```
+
+7. 매출 별로 새 테이블 만들기
+
+```mysql
+CREATE TABLE classicmodels.stat AS
+SELECT C.country,
+SUM(priceeach*quantityordered) SALES
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orderdetails B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.customers C
+ON A.customernumber = C.customernumber
+GROUP BY 1
+ORDER BY 2 DESC;
+```
+
+8. 위 테이블 실행
+
+```mysql
+SELECT *
+FROM classicmodels.stat;
+```
+
+9. Dense_Rank를 활용해 매출액 등수 매기기
+
+```mysql
+SELECT country, SALES, 
+DENSE_RANK() OVER(ORDER BY SALES DESC) RNK
+FROM classicmodels.stat;
+```
+
+10. 출력 결과를 다시 테이블로 생성
+
+```mysql
+CREATE TABLE classicmodels.stat_rnk AS
+SELECT country, SALES,
+DENSE_RANK() OVER(ORDER BY SALES DESC) RNK
+FROM classicmodels.stat;
+```
+
+11. 위 테이블 실행
+
+```mysql
+SELECT *
+FROM classicmodels.stat_rnk;
+```
+
+12. 상위 5개 국가 추출
+
+```mysql
+SELECT *
+FROM classicmodels.stat_rnk
+WHERE RNK BETWEEN 1 AND 5;
+```
+
+13. SUBQUERY
+
+```mysql
+SELECT *
+FROM
+(SELECT*
+FROM) A;
+```
+
+```mysql
+SELECT *
+FROM (SELECT country, SALES, 
+     DENSE_RANK() OVER(ORDER BY SALES DESC) RNK
+     FROM 
+     (SELECT C.country,
+     SUM(priceeach*quantityordered) SALES
+     FROM classicmodels.orders A
+     LEFT JOIN classicmodels.orderdetails B
+     ON A.ordernumber = B.ordernumber
+     LEFT JOIN classicmodels.customers C
+     ON A.customernumber = C.customernumber
+     GROUP BY 1) A) A
+     WHERE RNK <= 5;
+```
+
+
+
 
 
 
