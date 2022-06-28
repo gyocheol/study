@@ -1,5 +1,7 @@
 # mysql_database
 
+## 4장
+
 show databases; : 데이터 베이스 목록 보기
 
 #### workbench에서 database의 ERD를 보는 방법
@@ -303,11 +305,165 @@ FROM (SELECT country, SALES,
 
 
 
+#### 재구매율
+
+1. 기초 틀(거래가 없으면 매칭이 안됨)
+
+```mysql
+SELECT A.customernumber, A.orderdate, B.customernumber, B.orderdate
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orders B
+ON A.customernumber = B.customernumber
+AND SUBSTR(A.orderdate, 1, 4) = SUBSTR(B.orderdate, 1, 4) -1;
+```
+
+2. Retention Rate(%)
+
+```mysql
+SELECT C.country,
+SUBSTR(A.orderdate, 1, 4) YY,
+COUNT(DISTINCT A.customernumber) BU_1,
+COUNT(DISTINCT B.customernumber) BU_2, 
+COUNT(DISTINCT B.customernumber)/COUNT(DISTINCT A.customernumber) 
+RETENTION_RATE
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.orders B
+ON A.customernumber = B.customernumber
+AND SUBSTR(A.orderdate, 1, 4) = SUBSTR(B.orderdate, 1, 4) -1
+LEFT JOIN classicmodels.customers C
+ON A.customernumber = C.customernumber
+GROUP BY 1, 2;
+```
 
 
 
+#### BEST SELLER
+
+```mysql
+CREATE TABLE classicmodels.product_sales AS
+SELECT D.productname,
+SUM(quantityordered*priceeach) SALES
+FROM classicmodels.orders A
+LEFT JOIN classicmodels.customers B
+ON A.customernumber = B.customernumber
+LEFT JOIN classicmodels.orderdetails C
+ON A.ordernumber = C.ordernumber
+LEFT JOIN classicmodels.products D
+ON C.productcode = D.productcode
+WHERE B.country = 'USA'
+GROUP BY 1;
+
+SELECT *
+FROM
+(SELECT *, ROW_NUMBER() OVER(ORDER BY sales DESC) RNK
+FROM classicmodels.product_sales) A
+WHERE RNK <= 5
+ORDER BY RNK;
+```
 
 
+
+#### CHURN RATE(%)
+
+Churn : max(구매일, 접속일) 이후 일정 기간(3개월 이상) 구매, 접속하지 않은 상태
+
+1. 고객의 마지막 구매일
+
+```mysql
+SELECT MAX(orderdate) MX_ORDER
+FROM classicmodels.orders;
+```
+
+2. 2005-06-01 기준으로 며칠이 소요됐는지
+
+```mysql
+SELECT customernumber, MAX(orderdate) MX_ORDER
+FROM classicmodels.orders
+GROUP BY 1;
+```
+
+3. DATEDIFF() : DATEDIFF(date1, date2) 에서 date1 - date2 의 결과가 출력된다.
+
+```mysql
+SELECT customernumber, MX_ORDER, '2005-06-01',
+DATEDIFF('2005-06-01', MX_ORDER) DIFF
+FROM 
+(SELECT customernumber, MAX(orderdate) MX_ORDER
+FROM classicmodels.orders
+GROUP BY 1) BASE;
+```
+
+4. Churn type
+
+```mysql
+SELECT *, CASE WHEN DIFF >= 90 THEN 'CHURN' ELSE 'NON-CHURN' END CHURN_TYPE
+FROM
+(SELECT customernumber, MX_ORDER, '2005-06-01' END_POINT, 
+ DATEDIFF('2005-06-01', MX_ORDER) DIFF
+ FROM
+ (SELECT customernumber, MAX(orderdate) MX_ORDER
+ FROM classicmodels.orders
+ GROUP BY 1) BASE) BASE;
+```
+
+5. Churn Rate(%)
+
+```mysql
+SELECT CASE WHEN DIFF >= 90 THEN 'CHURN' ELSE 'NON-CHURN' END CHURN_TYPE,
+COUNT(DISTINCT customernumber) N_CUS
+FROM
+(SELECT customernumber, MX_ORDER, '2005-06-01' END_POINT, 
+ DATEDIFF('2005-06-01', MX_ORDER) DIFF
+ FROM
+ (SELECT customernumber, MAX(orderdate) MX_ORDER
+ FROM classicmodels.orders
+ GROUP BY 1) BASE) BASE
+ GROUP BY 1;
+```
+
+6. Churn Table
+
+```mysql
+CREATE TABLE classicmodels.churn_list AS
+SELECT CASE WHEN DIFF >= 90 THEN 'CHURN' ELSE 'NON-CHURN' END CHURN_TYPE,
+customernumber
+FROM
+(SELECT customernumber, MX_ORDER, '2005-06-01' END_POINT, 
+ DATEDIFF('2005-06-01', MX_ORDER) DIFF
+ FROM
+ (SELECT customernumber, MAX(orderdate) MX_ORDER
+ FROM classicmodels.orders
+ GROUP BY 1) BASE) BASE;
+```
+
+7. Churn 고객이 가장 많이 구매한 Productline
+
+```mysql
+SELECT C.productline,
+COUNT(DISTINCT B.customernumber) BU
+FROM classicmodels.orderdetails A
+LEFT JOIN classicmodels.orders B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.products C
+ON A.productcode = C.productcode
+GROUP BY 1;
+```
+
+8. Churn type, product line 별 구매자 수
+
+```mysql
+SELECT D.churn_type, C.productline,
+COUNT(DISTINCT B.customernumber) BU
+FROM classicmodels.orderdetails A
+LEFT JOIN classicmodels.orders B
+ON A.ordernumber = B.ordernumber
+LEFT JOIN classicmodels.products C
+ON A.productcode = C.productcode
+LEFT JOIN classicmodels.churn_list D
+ON B.customernumber = D.customernumber
+GROUP BY 1,2
+ORDER BY 1,3 DESC;
+```
 
 
 
