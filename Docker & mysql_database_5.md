@@ -1,0 +1,31 @@
+# mysql_database
+
+## 5장
+
+#### DIVISION NAME별 평균 평점
+
+```mysql
+SELECT 'DIVISION NAME', AVG(RATING) AVG_RATE
+FROM MYDATA.DATASET2
+GROUP BY 1
+ORDER BY 2 DESC;
+```
+
+#### DEPARTMENT별 평균 평점
+
+```mysql
+SELECT 'DEPARTMENT NAME', AVG(RATING) AVG_RATE
+FROM MYDATA.DATASET2
+GROUP BY 1
+ORDER BY 2 DESC;
+```
+
+#### TREND의 평점 3점 이하 리뷰
+
+```mysql
+SELECT *
+FROM MYDATA.DATASET2
+WHERE 'Department Name' = 'Trend'
+AND Rating <= 3;
+```
+
